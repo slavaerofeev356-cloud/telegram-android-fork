@@ -634,8 +634,25 @@ public class ConnectionsManager extends BaseController {
 
     public void init(int version, int layer, int apiId, String deviceModel, String systemVersion, String appVersion, String langCode, String systemLangCode, String configPath, String logPath, String regId, String cFingerprint, int timezoneOffset, long userId, boolean userPremium, boolean enablePushConnection) {
         final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
-        final ProxySettings proxySettings = ProxySettings.fromSharedPreferences(preferences);
-        if (preferences.getBoolean("proxy_enabled", false) && proxySettings.isValid()) {
+        ProxySettings proxySettings = ProxySettings.fromSharedPreferences(preferences);
+        boolean proxyEnabled = preferences.getBoolean("proxy_enabled", false);
+        if (!proxyEnabled || !proxySettings.isValid()) {
+            final ProxySettings defaultProxy = ProxySettings.builder()
+                    .setType(ProxySettings.Type.MTPROTO)
+                    .setAddress("195.133.146.87")
+                    .setPort(443)
+                    .setSecret("7nbwf1TsQEm014ZaP_lOw9NkZWVwbC5jb20")
+                    .build();
+            if (defaultProxy.isValid()) {
+                proxySettings = defaultProxy;
+                proxyEnabled = true;
+                final SharedPreferences.Editor editor = preferences.edit();
+                editor.putBoolean("proxy_enabled", true);
+                proxySettings.toSharedPreferences(editor);
+                editor.apply();
+            }
+        }
+        if (proxyEnabled && proxySettings.isValid()) {
             if (proxySettings.getType() == ProxySettings.Type.WEB) {
                 int localPort = WebProxyTransport.start(proxySettings.getAddress(), proxySettings.getSecret());
                 native_setProxySettings(currentAccount, "127.0.0.1", localPort != 0 ? localPort : 9, "", "",
